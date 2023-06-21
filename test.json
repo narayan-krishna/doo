@@ -1,0 +1,24 @@
+{
+  "list": [
+    {
+      "label": "add a file that tracks recently loaded files",
+      "complete": false
+    },
+    {
+      "label": "display file name but not path in status bar",
+      "complete": true
+    },
+    {
+      "label": "use solarized dark as nvim theme",
+      "complete": false
+    },
+    {
+      "label": "needs to select a new task on loading",
+      "complete": false
+    },
+    {
+      "label": "add a space before all input, or add some padding",
+      "complete": false
+    }
+  ]
+}
