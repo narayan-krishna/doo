@@ -29,6 +29,7 @@ impl DooItem {
 
 #[derive(Serialize, Deserialize)]
 pub struct DooList {
+    pub name: Option<String>,
     pub list: Vec<DooItem>,
     #[serde(skip)]
     pub state: ListState,
@@ -39,6 +40,7 @@ pub struct DooList {
 impl DooList {
     pub fn new() -> DooList {
         DooList {
+            name: None,
             list: Vec::new(),
             state: ListState::default(),
             path: None,
@@ -68,6 +70,10 @@ impl DooList {
         serde_json::to_writer_pretty(writer, &self)?;
 
         Ok(())
+    }
+
+    pub fn change_name(&mut self, new_name: String) {
+        self.name = Some(new_name);
     }
 
     pub fn next(&mut self) {
@@ -156,7 +162,7 @@ impl DooList {
 }
 
 impl Display for DooList {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         todo!()
     }
 }

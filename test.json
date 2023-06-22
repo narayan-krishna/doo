@@ -1,16 +1,13 @@
 {
+  "name": "doo",
   "list": [
-    {
-      "label": "add a file that tracks recently loaded files",
-      "complete": false
-    },
     {
       "label": "display file name but not path in status bar",
       "complete": true
     },
     {
       "label": "use solarized dark as nvim theme",
-      "complete": false
+      "complete": true
     },
     {
       "label": "needs to select a new task on loading",
@@ -18,6 +15,34 @@
     },
     {
       "label": "add a space before all input, or add some padding",
+      "complete": false
+    },
+    {
+      "label": "on enter, open a notes section for a certain todo",
+      "complete": false
+    },
+    {
+      "label": "add a diagnostics menu",
+      "complete": false
+    },
+    {
+      "label": "add !wq",
+      "complete": false
+    },
+    {
+      "label": "add config",
+      "complete": false
+    },
+    {
+      "label": "add ability to move tasks up and down",
+      "complete": false
+    },
+    {
+      "label": "add a file that tracks recently opened files",
+      "complete": false
+    },
+    {
+      "label": "implement this with a linked list",
       "complete": false
     }
   ]

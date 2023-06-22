@@ -10,7 +10,7 @@ impl<T> UndoQueue<T> {
     pub fn new(capacity: usize) -> UndoQueue<T> {
         UndoQueue {
             queue: VecDeque::new(),
-            capacity: 5,
+            capacity,
         }
     }
 

@@ -100,6 +100,7 @@ impl LayoutVertical {
 }
 
 // TODO: should support height, width parameter
+/// get the block 
 fn get_doo_block_from_screen<B: Backend>(
     f: &Frame<B>,
     vertical_orientation: Option<LayoutVertical>,
@@ -132,46 +133,48 @@ fn get_doo_block_from_screen<B: Backend>(
     return vertical_cut;
 }
 
-fn get_doo_module<B: Backend>(
-    f: &Frame<B>,
-    vertical_orientation: Option<LayoutVertical>,
-    horizontal_orientation: Option<LayoutHorizontal>,
-) -> Vec<Rect> {
-    let doo_block = get_doo_block_from_screen(f, vertical_orientation, horizontal_orientation);
+fn get_doo_module_chunks(doo_module: Rect) -> Vec<Rect> {
 
     let doo_modules = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([Constraint::Percentage(90), Constraint::Percentage(10)].as_ref())
-        .split(doo_block);
+        .split(doo_module);
 
     return doo_modules;
 }
 
 pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut app::App) {
     // working app area
-    let doo_modules = get_doo_module(
+
+    let doo_module = get_doo_block_from_screen(
         f,
         Some(LayoutVertical::Middle),
         Some(LayoutHorizontal::Center),
     );
+
+    let doo_module_chunks = get_doo_module_chunks(doo_module);
+
+    // block around module
+    let wrapper_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(Color::DarkGray));
+
+    f.render_widget(wrapper_block, doo_module_chunks[0]);
 
     // split main display into todo area and status
     let core_module = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([Constraint::Percentage(15), Constraint::Percentage(85)].as_ref())
-        .split(doo_modules[0]);
+        .split(doo_module_chunks[0]);
 
-    let wrapper_block = Block::default()
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::DarkGray));
 
-    f.render_widget(wrapper_block, doo_modules[0]);
-    render_status_bar(f, app.current_path.clone(), core_module[0]);
+    // render components
+    render_status_bar(f, app.doolist.name.clone(), &app.doolist.state, app.doolist.list.len(), core_module[0]);
     render_list(f, &mut app.doolist, core_module[1]);
-    render_input_bar(f, &app.mode, app.input.clone(), doo_modules[1]);
+    render_input_bar(f, &app.mode, app.input.clone(), doo_module_chunks[1]);
 }
 
 fn render_list<B: Backend>(f: &mut Frame<B>, doolist: &mut DooList, chunk: Rect) {
@@ -220,7 +223,7 @@ fn render_list<B: Backend>(f: &mut Frame<B>, doolist: &mut DooList, chunk: Rect)
     f.render_stateful_widget(live_draw_list, chunk, &mut doolist.state);
 }
 
-fn render_status_bar<B: Backend>(f: &mut Frame<B>, current_path: Option<String>, chunk: Rect) {
+fn render_status_bar<B: Backend>(f: &mut Frame<B>, name: Option<String>, list_state: &ListState, list_length: usize, chunk: Rect) {
     let status_block = Block::default()
         .title_alignment(Alignment::Left)
         .borders(Borders::BOTTOM)
@@ -232,15 +235,18 @@ fn render_status_bar<B: Backend>(f: &mut Frame<B>, current_path: Option<String>,
         .constraints([Constraint::Percentage(85), Constraint::Percentage(15)].as_ref())
         .split(chunk);
 
-    let filename = Paragraph::new(match current_path {
-        Some(path) => path,
-        None => "-- new file --".to_string(),
+    let filename = Paragraph::new(match name {
+        Some(n) => n,
+        None => "- ':changename <name>' to name list -".to_string(),
     })
     .style(Style::default())
     .alignment(Alignment::Left)
     .wrap(Wrap { trim: true });
 
-    let widget = Paragraph::new("0/5")
+    let widget = Paragraph::new(format!("{}/{}", match list_state.selected() {
+        Some(i) => format!("{}", i + 1), //TODO: error handlign
+        None => "--".to_string(),
+    }, list_length))
         .style(Style::default())
         .alignment(Alignment::Right)
         .wrap(Wrap { trim: true });
@@ -267,8 +273,6 @@ fn render_input_bar<B: Backend>(f: &mut Frame<B>, mode: &app::Mode, input: Strin
         app::Mode::Command => (" Command ", Style::default().fg(Color::Red)),
         app::Mode::Input => (" Set task name ", Style::default().fg(Color::Yellow)),
     };
-
-    // let result_diagnostics_style = Style::default().fg(Color::Magenta);
 
     // impl len for launcher list
     let spans = Spans::from(vec![

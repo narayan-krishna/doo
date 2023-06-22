@@ -179,6 +179,10 @@ impl App {
                 }
                 Err(e) => eprintln!("that was an error {}", e),
             },
+            "changename" => if let Some(name) = elements.get(1) {
+                self.doolist.name = Some(name.to_string());
+            },
+            "recents" => todo!(),
             "q" => self.quit_state = true,
             _ => {}
         }
