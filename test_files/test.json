@@ -1,0 +1,13 @@
+{
+  "name": "testog",
+  "list": [
+    {
+      "label": "another one",
+      "complete": false
+    },
+    {
+      "label": "another one2",
+      "complete": false
+    }
+  ]
+}

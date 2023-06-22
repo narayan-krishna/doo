@@ -1,0 +1,37 @@
+{
+  "name": "2?",
+  "list": [
+    {
+      "label": "display file name but not path in status bar",
+      "complete": false
+    },
+    {
+      "label": "use solarized dark as nvim theme",
+      "complete": true
+    },
+    {
+      "label": "needs to select a new task on loading",
+      "complete": false
+    },
+    {
+      "label": "add config",
+      "complete": false
+    },
+    {
+      "label": "implement this with a linked list",
+      "complete": false
+    },
+    {
+      "label": "add !wq",
+      "complete": true
+    },
+    {
+      "label": "add a diagnostics menu",
+      "complete": false
+    },
+    {
+      "label": "on enter, open a notes section for a certain todo",
+      "complete": false
+    }
+  ]
+}
