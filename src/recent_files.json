@@ -1,6 +1,7 @@
 {
   "queue": {
     "items": [
+      "todos.json",
       "test_files/3test.json",
       "test_files/2test.json",
       "test_files/test.json",
