@@ -7,7 +7,7 @@ use tui::widgets::{
 };
 use tui::Frame;
 
-use super::doolist::DooList;
+use super::{recent_files::RecentFiles, DooList, Screen};
 
 use crate::app;
 
@@ -100,7 +100,7 @@ impl LayoutVertical {
 }
 
 // TODO: should support height, width parameter
-/// get the block 
+/// get the block
 fn get_doo_block_from_screen<B: Backend>(
     f: &Frame<B>,
     vertical_orientation: Option<LayoutVertical>,
@@ -134,7 +134,6 @@ fn get_doo_block_from_screen<B: Backend>(
 }
 
 fn get_doo_module_chunks(doo_module: Rect) -> Vec<Rect> {
-
     let doo_modules = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
@@ -170,14 +169,26 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut app::App) {
         .constraints([Constraint::Percentage(15), Constraint::Percentage(85)].as_ref())
         .split(doo_module_chunks[0]);
 
-
     // render components
-    render_status_bar(f, app.doolist.name.clone(), &app.doolist.state, app.doolist.list.len(), core_module[0]);
-    render_list(f, &mut app.doolist, core_module[1]);
+    render_status_bar(
+        f,
+        &app.screen,
+        app.doolist.name.clone(),
+        &app.doolist.state,
+        app.doolist.list.len(),
+        core_module[0],
+    );
+
+    match app.screen {
+        Screen::Help => render_help(f, core_module[1]),
+        Screen::DooList => render_doolist(f, &mut app.doolist, core_module[1]),
+        Screen::Recents => render_recents(f, &mut app.recent_files, core_module[1]),
+    }
+
     render_input_bar(f, &app.mode, app.input.clone(), doo_module_chunks[1]);
 }
 
-fn render_list<B: Backend>(f: &mut Frame<B>, doolist: &mut DooList, chunk: Rect) {
+fn render_doolist<B: Backend>(f: &mut Frame<B>, doolist: &mut DooList, chunk: Rect) {
     let items: Vec<ListItem> = doolist
         .list
         .iter()
@@ -223,7 +234,60 @@ fn render_list<B: Backend>(f: &mut Frame<B>, doolist: &mut DooList, chunk: Rect)
     f.render_stateful_widget(live_draw_list, chunk, &mut doolist.state);
 }
 
-fn render_status_bar<B: Backend>(f: &mut Frame<B>, name: Option<String>, list_state: &ListState, list_length: usize, chunk: Rect) {
+fn render_help<B: Backend>(f: &mut Frame<B>, chunk: Rect) {
+    let help_text = "doo has 4 modes: select, search, insert, and command.\n
+        In command mode, you can use the following commands:
+        \t:q -- quit
+        \t:w | :saveas <optional filepath> -- save file (to path)
+        \t:wq -- save and quit
+        \t:changename -- change the file display name
+        \t:recent -- load a recent todo
+        \t:help -- open this menu
+        ";
+
+    let help_paragraph = Paragraph::new(help_text)
+        .style(Style::default())
+        .alignment(Alignment::Left)
+        .wrap(Wrap { trim: true });
+
+    f.render_widget(help_paragraph, chunk);
+}
+
+fn render_recents<B: Backend>(f: &mut Frame<B>, recent_files: &mut RecentFiles, chunk: Rect) {
+    let items: Vec<ListItem> = recent_files
+        .queue
+        .items
+        .iter()
+        .map(|s| {
+            return ListItem::new(Span::styled(s, Style::default().fg(Color::Gray)));
+        })
+        .collect();
+
+    let live_draw_list = List::new(items)
+        .block(
+            Block::default()
+                .borders(Borders::NONE)
+                .border_type(BorderType::Rounded),
+        )
+        .style(Style::default())
+        .start_corner(tui::layout::Corner::TopRight)
+        .highlight_style(
+            Style::default()
+                .add_modifier(Modifier::REVERSED)
+                .fg(Color::Cyan),
+        );
+
+    f.render_stateful_widget(live_draw_list, chunk, &mut recent_files.state);
+}
+
+fn render_status_bar<B: Backend>(
+    f: &mut Frame<B>,
+    screen: &Screen,
+    name: Option<String>,
+    list_state: &ListState,
+    list_length: usize,
+    chunk: Rect,
+) {
     let status_block = Block::default()
         .title_alignment(Alignment::Left)
         .borders(Borders::BOTTOM)
@@ -235,24 +299,32 @@ fn render_status_bar<B: Backend>(f: &mut Frame<B>, name: Option<String>, list_st
         .constraints([Constraint::Percentage(85), Constraint::Percentage(15)].as_ref())
         .split(chunk);
 
-    let filename = Paragraph::new(match name {
-        Some(n) => n,
-        None => "- ':changename <name>' to name list -".to_string(),
+    let title = Paragraph::new(match screen {
+        Screen::DooList => match name {
+            Some(n) => n,
+            None => "- ':changename <name>' to name list -".to_string(),
+        },
+        Screen::Help => "HELP (<esc> to exit)".to_string(),
+        Screen::Recents => "Recent files (<esc> to exit)".to_string(),
     })
     .style(Style::default())
     .alignment(Alignment::Left)
     .wrap(Wrap { trim: true });
 
-    let widget = Paragraph::new(format!("{}/{}", match list_state.selected() {
-        Some(i) => format!("{}", i + 1), //TODO: error handlign
-        None => "--".to_string(),
-    }, list_length))
-        .style(Style::default())
-        .alignment(Alignment::Right)
-        .wrap(Wrap { trim: true });
+    let widget = Paragraph::new(format!(
+        "{}/{}",
+        match list_state.selected() {
+            Some(i) => format!("{}", i + 1), //TODO: error handlign
+            None => "--".to_string(),
+        },
+        list_length
+    ))
+    .style(Style::default())
+    .alignment(Alignment::Right)
+    .wrap(Wrap { trim: true });
 
     f.render_widget(status_block, chunk);
-    f.render_widget(filename, status_chunks[0]);
+    f.render_widget(title, status_chunks[0]);
     f.render_widget(widget, status_chunks[1]);
 }
 

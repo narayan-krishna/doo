@@ -1,7 +1,10 @@
 #![allow(unused_imports)]
 
+mod commands;
 pub mod doolist;
-mod queues;
+mod lists;
+mod recent_files;
+mod queue;
 mod ui;
 
 use crossterm::{
@@ -11,7 +14,9 @@ use crossterm::{
 };
 
 use doolist::{DooItem, DooList};
-use queues::UndoQueue;
+use recent_files::RecentFiles;
+use lists::*;
+use queue::CappedQueue;
 use std::{
     collections::VecDeque,
     error, io,
@@ -26,85 +31,111 @@ pub enum Mode {
     Input,
 }
 
+pub enum Screen {
+    DooList,
+    Help,
+    Recents,
+}
+
+const RECENT_FILES_PATH: &str = "src/recent_files.json";
+
 // TODO: look into error logging
 pub struct App {
+    screen: Screen,
+    mode: Mode,
     doolist: DooList,
+    recent_files: RecentFiles,
+    current_path: Option<String>,
+    undo_delete_queue: CappedQueue<DooItem>,
     quit_state: bool,
     input: String,
-    mode: Mode,
-    current_path: Option<String>,
-    undo_delete_queue: UndoQueue<DooItem>,
 }
 
 impl App {
     pub fn new(filepath: Option<String>) -> App {
         // app needs its own config file, in addition todo files
         let mut app = App {
-            doolist: DooList::new(),
-            quit_state: false,
-            input: String::from(""),
+            screen: Screen::DooList,
             mode: Mode::Select,
+            input: String::from(""),
+            doolist: DooList::new(),
+            recent_files: RecentFiles::load(RECENT_FILES_PATH),
             current_path: None,
-            undo_delete_queue: UndoQueue::new(5),
+            undo_delete_queue: CappedQueue::new(5),
+            quit_state: false,
         };
 
         let valid_filepath: Option<String> = if let Some(path) = filepath {
             Some(path)
-        } else if let Ok(path) = Self::most_recent_save() {
+        } else if let Ok(path) = app.most_recent_save() {
             Some(path)
         } else {
             None
         };
 
-        if let Some(path) = valid_filepath {
-            // try to load the most recent file
-            eprintln!("attempting to load path into doolist");
-            let saved_path: String = path.clone();
-            match DooList::load(path) {
-                Ok(list) => {
-                    app.doolist = list;
-                    app.current_path = Some(saved_path);
-                }
-                Err(e) => eprintln!("{}", e),
-            }
-        }
-
+        commands::load(valid_filepath, &mut app.doolist, &mut app.recent_files, &mut app.current_path);
         app
     }
 
-    fn most_recent_save() -> Result<String, Box<dyn error::Error>> {
-        return Ok(String::from("/home/knara/dev/rust/doo/test.json"));
-        // return Err("there is no most recent file path".into());
+    fn most_recent_save(&mut self) -> Result<String, Box<dyn error::Error>> {
+        if let Some(i) = self.recent_files.queue.items.get(0) {
+            return Ok(i.to_string());
+        }
+
+        return Err("there is no most recent file path".into());
+    }
+
+    pub fn handle_quit(&mut self) {
+        self.recent_files.save(RECENT_FILES_PATH).unwrap();
     }
 
     #[inline]
     pub fn handle_select(&mut self, key_code: crossterm::event::KeyCode) {
-        match key_code {
-            KeyCode::Char('q') => self.quit_state = true,
-            KeyCode::Char('a') => {
-                self.doolist.add_from_label(String::from("-- new task --"));
-                self.mode = Mode::Input;
-            }
-            KeyCode::Char('j') => self.doolist.next(),
-            KeyCode::Char('k') => self.doolist.previous(),
-            KeyCode::Char('x') => {
-                self.doolist.mark_selection(); // TODO: this should eventually print to an error
-                                               // message widget
-                return;
-            }
-            KeyCode::Char('d') => {
-                let deleted_item: Option<DooItem> = self.doolist.remove();
-                if let Some(item) = deleted_item {
-                    self.undo_delete_queue.push(item);
-                };
-            }
-            KeyCode::Char('u') => match self.undo_delete_queue.pop() {
-                Some(item) => self.doolist.add_from_item(item),
-                None => {}
+        match self.screen {
+            Screen::DooList => match key_code {
+                KeyCode::Char('q') => self.quit_state = true,
+                KeyCode::Char('a') => {
+                    self.doolist.add_from_label(String::from("-- new task --"));
+                    self.undo_delete_queue.clear().unwrap();
+                    self.mode = Mode::Input;
+                }
+                KeyCode::Char('j') => self.doolist.next(),
+                KeyCode::Char('k') => self.doolist.previous(),
+                KeyCode::Char('x') => {
+                    self.doolist.mark_selection(); // TODO: this should eventually print to an error
+                                                   // message widget
+                    return;
+                }
+                KeyCode::Char('d') => {
+                    let deleted_item: Option<DooItem> = self.doolist.remove();
+                    if let Some(item) = deleted_item {
+                        self.undo_delete_queue.push_front(item);
+                    };
+                }
+                KeyCode::Char('u') => match self.undo_delete_queue.pop_front() {
+                    Some(item) => self.doolist.add_from_item(item),
+                    None => {}
+                },
+                KeyCode::Char('i') => self.mode = Mode::Input,
+                KeyCode::Char(':') => self.mode = Mode::Command,
+                _ => {}
             },
-            KeyCode::Char('i') => self.mode = Mode::Input,
-            KeyCode::Char(':') => self.mode = Mode::Command,
-            _ => {}
+            Screen::Help => match key_code {
+                KeyCode::Esc => self.screen = Screen::DooList,
+                _ => {}
+            },
+            Screen::Recents => match key_code {
+                KeyCode::Char('j') => self.recent_files.next(),
+                KeyCode::Char('k') => self.recent_files.previous(),
+                KeyCode::Enter => {
+                    let selected_path = self.recent_files.select();
+                    commands::load(selected_path, &mut self.doolist, &mut self.recent_files, &mut self.current_path);
+                    // BUG: should only return to doolist on load success
+                    self.screen = Screen::DooList;
+                },
+                KeyCode::Esc => self.screen = Screen::DooList,
+                _ => {},
+            },
         }
     }
 
@@ -114,7 +145,7 @@ impl App {
     }
 
     #[inline]
-    pub fn handle_command(&mut self, key_code: crossterm::event::KeyCode) {
+    pub fn handle_command_input(&mut self, key_code: crossterm::event::KeyCode) {
         match key_code {
             KeyCode::Enter => {
                 self.mode = Mode::Select;
@@ -136,7 +167,7 @@ impl App {
     }
 
     #[inline]
-    pub fn handle_input(&mut self, key_code: crossterm::event::KeyCode) {
+    pub fn handle_label_input(&mut self, key_code: crossterm::event::KeyCode) {
         match key_code {
             KeyCode::Enter => {
                 self.mode = Mode::Select;
@@ -162,28 +193,24 @@ impl App {
     fn run_input_command(&mut self, input: String) {
         let elements: Vec<&str> = input.split(' ').collect();
         match elements[0] {
-            "saveas" | "w" => match elements.get(1) {
-                Some(path) => {
-                    self.doolist.saveas(path.to_string()).unwrap();
-                }
-                None => {
-                    if let Some(path) = &self.current_path {
-                        self.doolist.saveas(path.to_string()).unwrap();
-                    }
+            "saveas" | "w" => {
+                commands::saveas(elements.get(1), &mut self.doolist, &mut self.recent_files, &self.current_path)
+            }
+            "load" => {
+                match elements.get(1) {
+                    Some(i) => { commands::load(Some(i.to_string()), &mut self.doolist, &mut self.recent_files, &mut self.current_path) },
+                    None => eprintln!("failed to load file with supplied path"),
                 }
             },
-            "load" => match DooList::load(elements[1].to_string()) {
-                Ok(list) => {
-                    self.doolist = list;
-                    self.current_path = Some(elements[1].to_string());
-                }
-                Err(e) => eprintln!("that was an error {}", e),
-            },
-            "changename" => if let Some(name) = elements.get(1) {
-                self.doolist.name = Some(name.to_string());
-            },
-            "recents" => todo!(),
-            "q" => self.quit_state = true,
+            "wq" => {
+                commands::saveas(elements.get(1), &mut self.doolist, &mut self.recent_files, &self.current_path);
+                commands::quit(&mut self.quit_state);
+            }
+            "new" => commands::new(&mut self.doolist, &mut self.current_path),
+            "changename" => commands::changename(elements.get(1), &mut self.doolist.name),
+            "help" => commands::help(&mut self.screen, &mut self.mode),
+            "recent" => commands::recent(&mut self.screen, &mut self.mode),
+            "q" => commands::quit(&mut self.quit_state),
             _ => {}
         }
     }
@@ -210,8 +237,8 @@ pub fn run(mut app: App) -> Result<(), io::Error> {
                 match app.mode {
                     Mode::Select => app.handle_select(key.code),
                     Mode::Search => app.handle_search(key.code),
-                    Mode::Command => app.handle_command(key.code),
-                    Mode::Input => app.handle_input(key.code),
+                    Mode::Command => app.handle_command_input(key.code),
+                    Mode::Input => app.handle_label_input(key.code),
                 }
             }
         }
@@ -219,6 +246,7 @@ pub fn run(mut app: App) -> Result<(), io::Error> {
             last_tick = Instant::now();
         }
         if app.quit_state {
+            app.handle_quit();
             break;
         }
     }

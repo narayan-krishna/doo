@@ -7,6 +7,8 @@ use std::io::{BufReader, BufWriter};
 use std::path::Path;
 use tui::widgets::ListState;
 
+use super::lists;
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct DooItem {
     pub label: String,
@@ -56,7 +58,7 @@ impl DooList {
         list
     }
 
-    pub fn saveas(&self, path: String) -> std::io::Result<()> {
+    pub fn save(&self, path: String) -> std::io::Result<()> {
         eprintln!("attempting to save...");
 
         let file = OpenOptions::new()
@@ -74,32 +76,6 @@ impl DooList {
 
     pub fn change_name(&mut self, new_name: String) {
         self.name = Some(new_name);
-    }
-
-    pub fn next(&mut self) {
-        if self.list.len() != 0 {
-            let i = match self.state.selected() {
-                Some(i) => match i >= self.list.len() - 1 {
-                    true => i,
-                    false => i + 1,
-                },
-                None => 0,
-            };
-            self.state.select(Some(i));
-        }
-    }
-
-    pub fn previous(&mut self) {
-        if self.list.len() != 0 {
-            let i = match self.state.selected() {
-                Some(i) => match i == 0 {
-                    true => i,
-                    false => i - 1,
-                },
-                None => 0,
-            };
-            self.state.select(Some(i));
-        }
     }
 
     pub fn add_from_label(&mut self, label: String) {
@@ -126,13 +102,11 @@ impl DooList {
             false => {
                 if let Some(i) = self.state.selected() {
                     let removed_item: DooItem = self.list[i].clone();
-
                     if self.list.len() == 1 {
                         self.state = ListState::default();
                     } else if self.list.len() - 1 == i {
                         self.state.select(Some(i - 1));
                     }
-
                     self.list.remove(i);
                     return Some(removed_item);
                 }
@@ -161,9 +135,31 @@ impl DooList {
     }
 }
 
-impl Display for DooList {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+impl lists::Navigate for DooList {
+    fn previous(&mut self) {
+        if self.list.len() != 0 {
+            let i = match self.state.selected() {
+                Some(i) => match i == 0 {
+                    true => i,
+                    false => i - 1,
+                },
+                None => 0,
+            };
+            self.state.select(Some(i));
+        }
+    }
+
+    fn next(&mut self) {
+        if self.list.len() != 0 {
+            let i = match self.state.selected() {
+                Some(i) => match i >= self.list.len() - 1 {
+                    true => i,
+                    false => i + 1,
+                },
+                None => 0,
+            };
+            self.state.select(Some(i));
+        }
     }
 }
 
