@@ -36,6 +36,10 @@
     {
       "label": "check the current path of the todo opened",
       "complete": false
+    },
+    {
+      "label": "this is an actual todo checklist",
+      "complete": true
     }
   ]
 }

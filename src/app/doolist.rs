@@ -50,7 +50,7 @@ impl DooList {
     }
 
     // TODO: impl error handling for this function
-    pub fn load(path: String) -> serde_json::Result<DooList> {
+    pub fn load(path: &String) -> serde_json::Result<DooList> {
         let file = File::open(path).expect("failed to open file");
         let reader = BufReader::new(file);
         let list: serde_json::Result<DooList> = serde_json::from_reader(reader);
@@ -58,7 +58,7 @@ impl DooList {
         list
     }
 
-    pub fn save(&self, path: String) -> std::io::Result<()> {
+    pub fn save(&self, path: &String) -> std::io::Result<()> {
         eprintln!("attempting to save...");
 
         let file = OpenOptions::new()

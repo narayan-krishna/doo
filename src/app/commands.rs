@@ -1,17 +1,22 @@
-use super::{lists::Navigate, DooList, Mode, Screen, RecentFiles};
+use super::{lists::Navigate, DooList, Mode, RecentFiles, Screen};
 
 // TODO: refactor
-pub fn saveas(input: Option<&&str>, doolist: &mut DooList, recent_files: &mut RecentFiles, current_path: &Option<String>) {
+pub fn saveas(
+    input: Option<String>,
+    doolist: &mut DooList,
+    recent_files: &mut RecentFiles,
+    current_path: &Option<String>,
+) {
     match input {
         Some(path) => {
             eprintln!("saving to {}", path);
-            doolist.save(path.to_string()).unwrap();
+            doolist.save(&path).unwrap();
             recent_files.add_recent(path.to_string());
         }
         None => {
             if let Some(path) = &current_path {
                 eprintln!("saving to {}", path);
-                doolist.save(path.to_string()).unwrap();
+                doolist.save(&path).unwrap();
                 recent_files.add_recent(path.to_string());
             }
         }
@@ -19,9 +24,14 @@ pub fn saveas(input: Option<&&str>, doolist: &mut DooList, recent_files: &mut Re
 }
 
 // BUG: should propogate an error on load failure
-pub fn load(input: Option<String>, doolist: &mut DooList, recent_files: &mut RecentFiles, current_path: &mut Option<String>) {
+pub fn load(
+    input: Option<String>,
+    doolist: &mut DooList,
+    recent_files: &mut RecentFiles,
+    current_path: &mut Option<String>,
+) {
     if let Some(path) = input {
-        match DooList::load(path.to_string()) {
+        match DooList::load(&path) {
             Ok(list) => {
                 *doolist = list;
                 *current_path = Some(path.to_string());
@@ -38,7 +48,7 @@ pub fn new(doolist: &mut DooList, current_path: &mut Option<String>) {
     *doolist = DooList::new();
 }
 
-pub fn changename(input: Option<&&str>, doolist_name: &mut Option<String>) {
+pub fn rename(input: Option<&&str>, doolist_name: &mut Option<String>) {
     if let Some(name) = input {
         *doolist_name = Some(name.to_string());
     }

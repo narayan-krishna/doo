@@ -1,6 +1,6 @@
 use super::doolist::DooItem;
-use std::collections::VecDeque;
 use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 
 #[derive(Serialize, Deserialize)]
 pub struct CappedQueue<T> {

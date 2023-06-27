@@ -1,13 +1,17 @@
-use super::{ lists::Navigate, queue::CappedQueue };
-use tui::widgets::ListState;
+use super::{super::utils, lists::Navigate, queue::CappedQueue};
+use path_clean::PathClean;
 use serde::{Deserialize, Serialize};
+use serde_json;
+use std::env;
 use std::error::Error;
 use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufWriter};
-use serde_json;
+use std::io::{self, BufReader, BufWriter};
+use std::path::Path;
+use tui::widgets::ListState;
 
 #[derive(Serialize, Deserialize)]
 pub struct RecentFiles {
+    // TODO: use a better structure than a string
     pub queue: CappedQueue<String>,
     #[serde(skip)]
     pub state: ListState,
@@ -62,7 +66,9 @@ impl RecentFiles {
 
         if let Some(i) = self.state.selected() {
             match self.queue.items.get(i) {
-                Some(path) => { ret = Some(path.to_string()); },
+                Some(path) => {
+                    ret = Some(path.to_string());
+                }
                 None => {
                     eprintln!("failed to get item from queue");
                     return None;
@@ -88,7 +94,7 @@ impl RecentFiles {
             }
         }
 
-        // if yes, delete 
+        // if yes, delete
         if let Some(i) = curr_index {
             self.queue.items.remove(i);
         }

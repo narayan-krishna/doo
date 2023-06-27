@@ -1,5 +1,5 @@
 {
-  "name": "testog",
+  "name": "atestforx",
   "list": [
     {
       "label": "another one",
@@ -7,7 +7,7 @@
     },
     {
       "label": "another one2",
-      "complete": false
+      "complete": true
     }
   ]
 }

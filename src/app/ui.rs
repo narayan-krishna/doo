@@ -182,7 +182,7 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut app::App) {
     match app.screen {
         Screen::Help => render_help(f, core_module[1]),
         Screen::DooList => render_doolist(f, &mut app.doolist, core_module[1]),
-        Screen::Recents => render_recents(f, &mut app.recent_files, core_module[1]),
+        Screen::Recents => render_recents(f, &mut app.recent_files, &app.current_path, core_module[1]),
     }
 
     render_input_bar(f, &app.mode, app.input.clone(), doo_module_chunks[1]);
@@ -240,7 +240,8 @@ fn render_help<B: Backend>(f: &mut Frame<B>, chunk: Rect) {
         \t:q -- quit
         \t:w | :saveas <optional filepath> -- save file (to path)
         \t:wq -- save and quit
-        \t:changename -- change the file display name
+        \t:e | :load <optional filepath> -- load file into doo
+        \t:rename -- change the file display name
         \t:recent -- load a recent todo
         \t:help -- open this menu
         ";
@@ -253,12 +254,19 @@ fn render_help<B: Backend>(f: &mut Frame<B>, chunk: Rect) {
     f.render_widget(help_paragraph, chunk);
 }
 
-fn render_recents<B: Backend>(f: &mut Frame<B>, recent_files: &mut RecentFiles, chunk: Rect) {
+fn render_recents<B: Backend>(f: &mut Frame<B>, recent_files: &mut RecentFiles, current_filepath: &Option<String>, chunk: Rect) {
+    // render the current file as current
     let items: Vec<ListItem> = recent_files
         .queue
         .items
         .iter()
         .map(|s| {
+            if let Some(i) = current_filepath {
+                if s == i {
+                    return ListItem::new(Span::styled(s, Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)));
+                }
+            } 
+
             return ListItem::new(Span::styled(s, Style::default().fg(Color::Gray)));
         })
         .collect();

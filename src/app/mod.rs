@@ -3,8 +3,8 @@
 mod commands;
 pub mod doolist;
 mod lists;
-mod recent_files;
 mod queue;
+mod recent_files;
 mod ui;
 
 use crossterm::{
@@ -13,10 +13,11 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 
+use super::utils;
 use doolist::{DooItem, DooList};
-use recent_files::RecentFiles;
 use lists::*;
 use queue::CappedQueue;
+use recent_files::RecentFiles;
 use std::{
     collections::VecDeque,
     error, io,
@@ -37,7 +38,7 @@ pub enum Screen {
     Recents,
 }
 
-const RECENT_FILES_PATH: &str = "src/recent_files.json";
+const RECENT_FILES_PATH: &str = "/home/knara/dev/rust/doo/src/recent_files.json";
 
 // TODO: look into error logging
 pub struct App {
@@ -66,14 +67,19 @@ impl App {
         };
 
         let valid_filepath: Option<String> = if let Some(path) = filepath {
-            Some(path)
+            Some(utils::get_abs_path_from(path))
         } else if let Ok(path) = app.most_recent_save() {
             Some(path)
         } else {
             None
         };
 
-        commands::load(valid_filepath, &mut app.doolist, &mut app.recent_files, &mut app.current_path);
+        commands::load(
+            valid_filepath,
+            &mut app.doolist,
+            &mut app.recent_files,
+            &mut app.current_path,
+        );
         app
     }
 
@@ -129,12 +135,17 @@ impl App {
                 KeyCode::Char('k') => self.recent_files.previous(),
                 KeyCode::Enter => {
                     let selected_path = self.recent_files.select();
-                    commands::load(selected_path, &mut self.doolist, &mut self.recent_files, &mut self.current_path);
+                    commands::load(
+                        selected_path,
+                        &mut self.doolist,
+                        &mut self.recent_files,
+                        &mut self.current_path,
+                    );
                     // BUG: should only return to doolist on load success
                     self.screen = Screen::DooList;
-                },
+                }
                 KeyCode::Esc => self.screen = Screen::DooList,
-                _ => {},
+                _ => {}
             },
         }
     }
@@ -193,23 +204,46 @@ impl App {
     fn run_input_command(&mut self, input: String) {
         let elements: Vec<&str> = input.split(' ').collect();
         match elements[0] {
-            "saveas" | "w" => {
-                commands::saveas(elements.get(1), &mut self.doolist, &mut self.recent_files, &self.current_path)
-            }
-            "load" => {
+            "save" => commands::saveas(None, &mut self.doolist, &mut self.recent_files, &self.current_path),
+            "saveas" | "w" => commands::saveas(
                 match elements.get(1) {
-                    Some(i) => { commands::load(Some(i.to_string()), &mut self.doolist, &mut self.recent_files, &mut self.current_path) },
-                    None => eprintln!("failed to load file with supplied path"),
-                }
+                    Some(i) => Some(utils::get_abs_path_from(i.to_string())),
+                    None => None,
+                },
+                &mut self.doolist,
+                &mut self.recent_files,
+                &self.current_path,
+            ),
+            "load" | "e" => match elements.get(1) {
+                Some(i) => commands::load(
+                    Some(utils::get_abs_path_from(i.to_string())),
+                    &mut self.doolist,
+                    &mut self.recent_files,
+                    &mut self.current_path,
+                ),
+                None => eprintln!("failed to load file with supplied path"),
             },
             "wq" => {
-                commands::saveas(elements.get(1), &mut self.doolist, &mut self.recent_files, &self.current_path);
+                commands::saveas(
+                    None,
+                    &mut self.doolist,
+                    &mut self.recent_files,
+                    &self.current_path,
+                );
                 commands::quit(&mut self.quit_state);
             }
             "new" => commands::new(&mut self.doolist, &mut self.current_path),
-            "changename" => commands::changename(elements.get(1), &mut self.doolist.name),
+            "rename" => commands::rename(elements.get(1), &mut self.doolist.name),
             "help" => commands::help(&mut self.screen, &mut self.mode),
             "recent" => commands::recent(&mut self.screen, &mut self.mode),
+            "path" => eprintln!(
+                "{}",
+                if let Some(i) = &self.current_path {
+                    i
+                } else {
+                    "xd"
+                }
+            ),
             "q" => commands::quit(&mut self.quit_state),
             _ => {}
         }

@@ -1,11 +1,11 @@
 {
   "queue": {
     "items": [
-      "todos.json",
-      "test_files/3test.json",
-      "test_files/2test.json",
-      "test_files/test.json",
-      "testg2"
+      "/home/knara/dev/rust/doo/todos.json",
+      "/home/knara/dev/rust/doo/test_files/3test.json",
+      "/home/knara/dev/rust/doo/test_files/4test.json",
+      "/home/knara/dev/rust/doo/test_files/test.json",
+      "/home/knara/dev/rust/doo/xd.json"
     ],
     "capacity": 5
   }
