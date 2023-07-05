@@ -13,7 +13,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 
-use super::utils;
+use super::{ utils, config };
 use doolist::{DooItem, DooList};
 use lists::*;
 use queue::CappedQueue;
@@ -42,6 +42,7 @@ const RECENT_FILES_PATH: &str = "/home/knara/dev/rust/doo/src/recent_files.json"
 
 // TODO: look into error logging
 pub struct App {
+    config: config::DooConfig,
     screen: Screen,
     mode: Mode,
     doolist: DooList,
@@ -53,9 +54,10 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(filepath: Option<String>) -> App {
+    pub fn new(filepath: Option<String>, config: config::DooConfig) -> App {
         // app needs its own config file, in addition todo files
         let mut app = App {
+            config,
             screen: Screen::DooList,
             mode: Mode::Select,
             input: String::from(""),
@@ -204,7 +206,12 @@ impl App {
     fn run_input_command(&mut self, input: String) {
         let elements: Vec<&str> = input.split(' ').collect();
         match elements[0] {
-            "save" => commands::saveas(None, &mut self.doolist, &mut self.recent_files, &self.current_path),
+            "save" => commands::saveas(
+                None,
+                &mut self.doolist,
+                &mut self.recent_files,
+                &self.current_path,
+            ),
             "saveas" | "w" => commands::saveas(
                 match elements.get(1) {
                     Some(i) => Some(utils::get_abs_path_from(i.to_string())),

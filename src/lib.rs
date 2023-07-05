@@ -1,7 +1,8 @@
 pub mod app;
+pub mod config;
 
-pub fn run(filepath: Option<String>) {
-    let app = app::App::new(filepath);
+pub fn run(filepath: Option<String>, config: config::DooConfig) {
+    let app = app::App::new(filepath, config);
     app::run(app).unwrap();
 }
 

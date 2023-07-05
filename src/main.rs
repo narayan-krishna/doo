@@ -21,16 +21,20 @@ use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-
     let filepath = args.get(1);
 
-    doo::run(match filepath {
-        Some(path) => {
-            eprintln!("found some filepath to load from");
-            Some(path.to_string())
-        }
-        None => None,
-    });
+    let config: doo::config::DooConfig = confy::load("doo", "config").unwrap();
+
+    doo::run(
+        match filepath {
+            Some(path) => {
+                eprintln!("found filepath command line argument");
+                Some(path.to_string())
+            }
+            None => None,
+        },
+        config,
+    );
 
     println!("Hello, world!");
 }

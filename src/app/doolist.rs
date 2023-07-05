@@ -50,12 +50,18 @@ impl DooList {
     }
 
     // TODO: impl error handling for this function
-    pub fn load(path: &String) -> serde_json::Result<DooList> {
-        let file = File::open(path).expect("failed to open file");
-        let reader = BufReader::new(file);
-        let list: serde_json::Result<DooList> = serde_json::from_reader(reader);
+    pub fn load(path: &String) -> Result<DooList, &'static str> {
+        let file = match File::open(path) {
+            Ok(file) => file,
+            Err(_) => return Err("failed to find/open file"), //TODO : propogate
+        };
 
-        list
+        let reader = BufReader::new(file);
+
+        match serde_json::from_reader(reader) {
+            Ok(list) => return Ok(list),
+            Err(_) => return Err("failed to get list from file"), //TODO : propogate
+        }
     }
 
     pub fn save(&self, path: &String) -> std::io::Result<()> {

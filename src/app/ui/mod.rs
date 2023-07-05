@@ -1,3 +1,5 @@
+mod layout;
+
 use tui::backend::Backend;
 use tui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use tui::style::{Color, Modifier, Style};
@@ -8,116 +10,17 @@ use tui::widgets::{
 use tui::Frame;
 
 use super::{recent_files::RecentFiles, DooList, Screen};
+use layout::*;
 
 use crate::app;
-
-#[derive(Debug)]
-enum LayoutHorizontal {
-    Full,
-    Right,
-    Center,
-    Left,
-}
-
-impl LayoutHorizontal {
-    fn constraints(&self) -> [Constraint; 3] {
-        match self {
-            LayoutHorizontal::Full => [
-                Constraint::Percentage(100),
-                Constraint::Percentage(0),
-                Constraint::Percentage(0),
-            ],
-            LayoutHorizontal::Right => [
-                Constraint::Percentage(60),
-                Constraint::Percentage(40),
-                Constraint::Percentage(0),
-            ],
-            LayoutHorizontal::Center => [
-                Constraint::Percentage(30),
-                Constraint::Percentage(40),
-                Constraint::Percentage(0),
-            ],
-            LayoutHorizontal::Left => [
-                Constraint::Percentage(40),
-                Constraint::Percentage(60),
-                Constraint::Percentage(0),
-            ],
-        }
-    }
-
-    fn block_index(&self) -> usize {
-        match self {
-            LayoutHorizontal::Full => 0,
-            LayoutHorizontal::Right => 1,
-            LayoutHorizontal::Center => 1,
-            LayoutHorizontal::Left => 0,
-        }
-    }
-}
-
-#[derive(Debug)]
-enum LayoutVertical {
-    Full,
-    Top,
-    Middle,
-    Bottom,
-}
-
-impl LayoutVertical {
-    fn constraints(&self) -> [Constraint; 3] {
-        match self {
-            LayoutVertical::Full => [
-                Constraint::Percentage(100),
-                Constraint::Percentage(0),
-                Constraint::Percentage(0),
-            ],
-            LayoutVertical::Top => [
-                Constraint::Percentage(60),
-                Constraint::Percentage(40),
-                Constraint::Percentage(0),
-            ],
-            LayoutVertical::Middle => [
-                Constraint::Percentage(20),
-                Constraint::Percentage(60),
-                Constraint::Percentage(20),
-            ],
-            LayoutVertical::Bottom => [
-                Constraint::Percentage(40),
-                Constraint::Percentage(60),
-                Constraint::Percentage(0),
-            ],
-        }
-    }
-
-    fn block_index(&self) -> usize {
-        match self {
-            LayoutVertical::Full => 0,
-            LayoutVertical::Top => 0,
-            LayoutVertical::Middle => 1,
-            LayoutVertical::Bottom => 1,
-        }
-    }
-}
 
 // TODO: should support height, width parameter
 /// get the block
 fn get_doo_block_from_screen<B: Backend>(
     f: &Frame<B>,
-    vertical_orientation: Option<LayoutVertical>,
-    horizontal_orientation: Option<LayoutHorizontal>,
+    vertical_orientation: LayoutVertical,
+    horizontal_orientation: LayoutHorizontal,
 ) -> Rect {
-    // assign default directions
-    let horizontal_orientation = match horizontal_orientation {
-        Some(orientation) => orientation,
-        None => LayoutHorizontal::Left,
-    };
-
-    // assign default directions
-    let vertical_orientation = match vertical_orientation {
-        Some(orientation) => orientation,
-        None => LayoutVertical::Bottom,
-    };
-
     // cut the block into horizontal chunk, return new block to cut
     let horizontal_cut = Layout::default()
         .direction(Direction::Horizontal)
@@ -136,7 +39,7 @@ fn get_doo_block_from_screen<B: Backend>(
 fn get_doo_module_chunks(doo_module: Rect) -> Vec<Rect> {
     let doo_modules = Layout::default()
         .direction(Direction::Vertical)
-        .margin(1)
+        .margin(0)
         .constraints([Constraint::Percentage(90), Constraint::Percentage(10)].as_ref())
         .split(doo_module);
 
@@ -144,12 +47,12 @@ fn get_doo_module_chunks(doo_module: Rect) -> Vec<Rect> {
 }
 
 pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut app::App) {
-    // working app area
 
+    // working app area
     let doo_module = get_doo_block_from_screen(
         f,
-        Some(LayoutVertical::Middle),
-        Some(LayoutHorizontal::Center),
+        LayoutVertical::from_str(&app.config.layout.vertical),
+        LayoutHorizontal::from_str(&app.config.layout.horizontal),
     );
 
     let doo_module_chunks = get_doo_module_chunks(doo_module);
@@ -166,7 +69,7 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut app::App) {
     let core_module = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
-        .constraints([Constraint::Percentage(15), Constraint::Percentage(85)].as_ref())
+        .constraints([Constraint::Percentage(10), Constraint::Percentage(90)].as_ref())
         .split(doo_module_chunks[0]);
 
     // render components
@@ -182,7 +85,9 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut app::App) {
     match app.screen {
         Screen::Help => render_help(f, core_module[1]),
         Screen::DooList => render_doolist(f, &mut app.doolist, core_module[1]),
-        Screen::Recents => render_recents(f, &mut app.recent_files, &app.current_path, core_module[1]),
+        Screen::Recents => {
+            render_recents(f, &mut app.recent_files, &app.current_path, core_module[1])
+        }
     }
 
     render_input_bar(f, &app.mode, app.input.clone(), doo_module_chunks[1]);
@@ -227,7 +132,7 @@ fn render_doolist<B: Backend>(f: &mut Frame<B>, doolist: &mut DooList, chunk: Re
         .start_corner(tui::layout::Corner::TopRight)
         .highlight_style(
             Style::default()
-                .add_modifier(Modifier::UNDERLINED)
+                .add_modifier(Modifier::REVERSED)
                 .fg(Color::Cyan),
         );
 
@@ -236,7 +141,7 @@ fn render_doolist<B: Backend>(f: &mut Frame<B>, doolist: &mut DooList, chunk: Re
 
 fn render_help<B: Backend>(f: &mut Frame<B>, chunk: Rect) {
     let help_text = "doo has 4 modes: select, search, insert, and command.\n
-        In command mode, you can use the following commands:
+        In command mode, you can use the following commands:\n
         \t:q -- quit
         \t:w | :saveas <optional filepath> -- save file (to path)
         \t:wq -- save and quit
@@ -254,7 +159,12 @@ fn render_help<B: Backend>(f: &mut Frame<B>, chunk: Rect) {
     f.render_widget(help_paragraph, chunk);
 }
 
-fn render_recents<B: Backend>(f: &mut Frame<B>, recent_files: &mut RecentFiles, current_filepath: &Option<String>, chunk: Rect) {
+fn render_recents<B: Backend>(
+    f: &mut Frame<B>,
+    recent_files: &mut RecentFiles,
+    current_filepath: &Option<String>,
+    chunk: Rect,
+) {
     // render the current file as current
     let items: Vec<ListItem> = recent_files
         .queue
@@ -263,9 +173,12 @@ fn render_recents<B: Backend>(f: &mut Frame<B>, recent_files: &mut RecentFiles, 
         .map(|s| {
             if let Some(i) = current_filepath {
                 if s == i {
-                    return ListItem::new(Span::styled(s, Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)));
+                    return ListItem::new(Span::styled(
+                        s,
+                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                    ));
                 }
-            } 
+            }
 
             return ListItem::new(Span::styled(s, Style::default().fg(Color::Gray)));
         })
