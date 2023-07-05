@@ -15,7 +15,7 @@ impl std::default::Default for DooConfig {
     fn default() -> Self {
         Self {
             layout: Layout {
-                vertical: String::from("middle"),
+                vertical: String::from("center"),
                 horizontal: String::from("center"),
             }
         }
