@@ -1,5 +1,5 @@
 {
-  "name": "atestforx",
+  "name": "demolist",
   "list": [
     {
       "label": "another one",
@@ -8,6 +8,18 @@
     {
       "label": "another one2",
       "complete": true
+    },
+    {
+      "label": "this is going well",
+      "complete": false
+    },
+    {
+      "label": "i have a lot of wokr",
+      "complete": false
+    },
+    {
+      "label": "-- new task --",
+      "complete": false
     }
   ]
 }

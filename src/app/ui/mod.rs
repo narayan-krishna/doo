@@ -223,7 +223,7 @@ fn render_status_bar<B: Backend>(
     let title = Paragraph::new(match screen {
         Screen::DooList => match name {
             Some(n) => n,
-            None => "- ':changename <name>' to name list -".to_string(),
+            None => "- ':rename <name>' to name list -".to_string(),
         },
         Screen::Help => "HELP (<esc> to exit)".to_string(),
         Screen::Recents => "Recent files (<esc> to exit)".to_string(),
