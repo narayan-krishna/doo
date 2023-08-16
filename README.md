@@ -27,7 +27,7 @@ In command mode, you can use the following commands:
 
 ## Configuration
 
-Doo automically generates a config file at _doo.yml_ for defining the layout of Doo.
+Doo automically generates a config file at _~/.config/doo.yml_ for defining the layout of Doo.
 
 ```yml
 layout:
